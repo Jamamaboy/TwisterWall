@@ -1,4 +1,4 @@
-Thai by [Jamamaboy]([https://twister-wall.vercel.app/](https://github.com/Jamamaboy))
+Thai by [Jamamaboy](https://github.com/Jamamaboy)
 # TwisterWall (กงล้อ กำแพงหันสา)
 
 ทุกคนเคยเล่นTwister หรือเคยเห็นไหมครับ
