@@ -31,6 +31,37 @@
 
         h1 { margin-bottom: 5px; font-weight: 300; text-transform: uppercase; letter-spacing: 1px; text-align: center; font-size: 1.5rem; }
 
+        /* --- Volume Control --- */
+        .volume-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            background: #333;
+            padding: 8px 15px;
+            border-radius: 20px;
+            border: 1px solid #444;
+        }
+        .volume-icon { font-size: 1.2rem; }
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100px;
+            height: 6px;
+            background: #555;
+            border-radius: 5px;
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+        }
+        .volume-text { font-size: 0.8rem; color: #aaa; min-width: 35px; text-align: right; }
+
         /* --- Display Area --- */
         .display-area {
             position: relative;
@@ -183,6 +214,12 @@
 
     <h1>ปีนผาเสี่ยงดวง</h1>
 
+    <div class="volume-container">
+        <span class="volume-icon">🔊</span>
+        <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="0.5" oninput="updateVolume(this.value)">
+        <span class="volume-text" id="volumeText">50%</span>
+    </div>
+
     <div class="display-area" id="displayBox">
         <button class="reset-counter-btn" onclick="resetGame()" title="เริ่มใหม่">เริ่มใหม่</button>
 
@@ -276,34 +313,54 @@
         }
         initDashboard();
 
-        // --- Audio ---
+        // --- Audio & Volume Control ---
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        // ** สร้าง Master Gain Node (ตัวคุมเสียงหลัก) **
+        const masterGainNode = audioCtx.createGain();
+        masterGainNode.connect(audioCtx.destination);
+        masterGainNode.gain.value = 0.5; // Default 50%
+
+        function updateVolume(val) {
+            // ปรับเสียงและอัพเดทตัวเลข %
+            masterGainNode.gain.value = val;
+            document.getElementById('volumeText').innerText = Math.round(val * 100) + "%";
+
+            // เปลี่ยนไอคอนถ้าปิดเสียง
+            const icon = document.querySelector('.volume-icon');
+            if (val == 0) icon.innerText = '🔇';
+            else icon.innerText = '🔊';
+        }
+
         function playSound(type) {
             if (audioCtx.state === 'suspended') audioCtx.resume();
+
             const osc = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
-            osc.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
+            const noteGain = audioCtx.createGain(); // Gain แยกของแต่ละเสียง
+
+            osc.connect(noteGain);
+            // ** เชื่อมต่อเสียงย่อยเข้ากับ Master Gain แทน Destination **
+            noteGain.connect(masterGainNode);
 
             if (type === 'tick') {
                 osc.type = 'square';
                 osc.frequency.setValueAtTime(150, audioCtx.currentTime);
                 osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.05);
-                gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+                noteGain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                noteGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
                 osc.start(); osc.stop(audioCtx.currentTime + 0.05);
             } else if (type === 'win') {
                 osc.type = 'triangle';
                 osc.frequency.setValueAtTime(400, audioCtx.currentTime);
                 osc.frequency.linearRampToValueAtTime(600, audioCtx.currentTime + 0.1);
-                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                noteGain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                noteGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
                 osc.start(); osc.stop(audioCtx.currentTime + 0.5);
             } else if (type === 'stay') {
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                noteGain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                noteGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
                 osc.start(); osc.stop(audioCtx.currentTime + 0.3);
             }
         }
